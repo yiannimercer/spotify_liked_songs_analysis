@@ -3,3 +3,4 @@ Data Collection/.DS_Store
 Data Collection/.cache
 .DS_Store
 *.pyc
+data_collection/SECRETS.py
