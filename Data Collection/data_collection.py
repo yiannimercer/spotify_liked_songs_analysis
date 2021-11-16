@@ -20,7 +20,16 @@ from spotipy.oauth2 import SpotifyClientCredentials
 
 # Spotify Liked Songs Playlist to Dataset
 
-def dataframe_tracks(results):
+def spotify_liked_dataset():
+    '''
+    
+
+    Returns
+    -------
+    classified_df : TYPE = 
+        DESCRIPTION.
+
+    '''
     sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=CLIENT_ID,
                                                client_secret=CLIENT_SECRET,
                                                redirect_uri="https://example.com/callback",
@@ -51,50 +60,35 @@ def dataframe_tracks(results):
       
     data_dict = {"artist_name":artists,"track_name":track_list,"track_id":ids,"date_liked":liked_dates}
     df = pd.DataFrame(data = data_dict)
-    return df
+    
+    df['track_id'] = df.apply(lambda x: x['track_id'].split(":")[-1],axis = 1)
+    
+    df.drop_duplicates(subset = ['artist_name','track_name'],inplace = True)
+    
+    features = pd.read_csv("data_files/SpotifyFeatures.csv")
+    
+    liked_df = features.copy()
 
-# Dataframe Function Creation
-results = sp.current_user_saved_tracks()
-df = dataframe_tracks(results)
-
-# Cleaning the URI id column
-
-df['track_id'] = df.apply(lambda x: x['track_id'].split(":")[-1],axis = 1)
-
-df.drop_duplicates(subset = ['artist_name','track_name'],inplace = True)
-
-
-# SpotifyFeatures Dataset
-
-features = pd.read_csv("data_files/SpotifyFeatures.csv")
-
-# Marking songs that I have favortied in Spotify Dataset
-
-liked_df = features.copy()
-
-features['same_artist'] = features.artist_name.isin(df.artist_name)
-features['same_track'] = features.track_name.isin(df.track_name)
-features['liked'] = np.where((features["same_artist"] == True) & (features["same_track"] == True), 1,0)
-classified_df = features.drop(["same_artist", "same_track"], axis=1)
-classified_df = classified_df.drop_duplicates(['artist_name','track_name'])
-classified_df = pd.merge(classified_df,df[['track_name','artist_name','date_liked']],how = 'left',on=['track_name','artist_name'])
-                   
-# Cleaning Data Frame
-
-classified_df.columns
-
-## Casting as proper dtype 
-
-num_cols = ['popularity','acousticness', 'danceability', 'duration_ms', 
+    features['same_artist'] = features.artist_name.isin(df.artist_name)
+    features['same_track'] = features.track_name.isin(df.track_name)
+    features['liked'] = np.where((features["same_artist"] == True) & (features["same_track"] == True), 1,0)
+    classified_df = features.drop(["same_artist", "same_track"], axis=1)
+    classified_df = classified_df.drop_duplicates(['artist_name','track_name'])
+    classified_df = pd.merge(classified_df,df[['track_name','artist_name','date_liked']],how = 'left',on=['track_name','artist_name'])
+    
+    num_cols = ['popularity','acousticness', 'danceability', 'duration_ms', 
             'energy', 'instrumentalness','liveness', 'loudness',
             'speechiness', 'tempo','valence', 'liked']
-
-for col in num_cols:
-    classified_df[col] = classified_df[col].astype(float)
     
-classified_df['liked_date'] = pd.to_datetime(classified_df['date_liked'])
-        
-# Write to CSV
+    for col in num_cols:
+        classified_df[col] = classified_df[col].astype(float)
+    
+    classified_df['date_liked'] = pd.to_datetime(classified_df['date_liked'])
+    
+    return classified_df
 
-classified_df.to_csv("data_files/spotify_liked_final_df.csv")
+# Dataframe Function Creation
+df = spotify_liked_dataset()
+
+
 
